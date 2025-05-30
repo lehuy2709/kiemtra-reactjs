@@ -1,0 +1,25 @@
+{
+  "products": [
+    {
+      "id": "2",
+      "name": "chuoi ",
+      "price": 432922,
+      "remaining": 68886
+    },
+    {
+      "id": "4",
+      "name": "sdasd",
+      "price": 242,
+      "remaining": 2412515
+    }
+  ],
+  "orders": [
+    {
+      "id": "1",
+      "date": "2025-05-25",
+      "product_id": "2",
+      "quantity": 2,
+      "amount": 16000
+    }
+  ]
+}
