@@ -27,6 +27,7 @@ export default () => {
         price: "",
         remaining: ""
     })
+    const [searchText, setSearchText] = useState("")
 
     const onMounted = async () => {
         const productData = await getMethod('/products')
@@ -72,10 +73,21 @@ export default () => {
         onMounted()
     }, [])
 
+    const filteredProducts = products.filter(p =>
+        p.name.toLowerCase().includes(searchText.toLowerCase())
+    )
+
     return (
         <>
 
-            <TableContainer>
+            <TableContainer sx={{ mt: 4, p: 2 }}>
+                <TextField
+                    label="Tìm theo tên sản phẩm"
+                    variant="outlined"
+                    fullWidth
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                />
                 <Typography>
                     Danh sach san pham
                 </Typography>
@@ -96,7 +108,7 @@ export default () => {
 
                     <TableBody>
                         {
-                            products.map((product: Product) =>
+                            filteredProducts.map((product: Product) =>
                                 <TableRow key={product.id}>
                                     <TableCell>{product.id}</TableCell>
                                     <TableCell>{product.name}</TableCell>
@@ -156,11 +168,6 @@ export default () => {
                     <Button variant="contained" onClick={onAdd} >Luu</Button>
                 </DialogActions>
             </Dialog>
-
         </>
-
-
-
-
     )
 }

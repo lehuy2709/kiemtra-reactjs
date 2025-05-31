@@ -1,172 +1,205 @@
-import { useEffect, useState } from "react";
-import { deleteMethod, getMethod, postMethod } from "../utils/api";
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
-import DeleteIcon from '@mui/icons-material/Delete';
+import {
+    Table, TableBody, TableCell, TableHead, TableRow,
+    Typography, TableContainer, IconButton,
+    Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete
+} from "@mui/material"
+import AddIcon from "@mui/icons-material/Add"
+import DeleteIcon from "@mui/icons-material/Delete"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { getMethod, postMethod, deleteMethod } from "../utils/api"
 
 interface Order {
-    id: number | string,
-    date: string,
-    product_id: number,
-    quantity: number,
+    id: number
+    date: string
+    product_id: number
+    quantity: number
     amount: number
 }
 
 interface Product {
-    id: number | string,
-    name: string,
+    id: number
+    name: string
     price: number
 }
 
+const headers = [
+    { name: "id", text: "ID" },
+    { name: "product_name", text: "Ten San Pham" },
+    { name: "quantity", text: "So Luong" },
+    { name: "amount", text: "Tong Tien" },
+    { name: "action", text: "Thao tac" }
+]
 
-export default () => {
-
-    const headers = [
-        { name: 'id', text: 'ID' },
-        { name: 'product_name', text: 'Ten San Pham' },
-        { name: 'quantity', text: 'So Luong' },
-        { name: 'amount', text: 'Tong Tien' },
-        { name: 'action', text: '' }
-    ]
-    const [open, setOpen] = useState(false);
+const OrderList = () => {
     const [orders, setOrders] = useState<Order[]>([])
     const [products, setProducts] = useState<Product[]>([])
+    const [open, setOpen] = useState(false)
+    const [searchText, setSearchText] = useState("")
     const [newOrder, setNewOrder] = useState({
         date: "",
-        product_id: "",
-        quantity: ""
+        product: null as Product | null,
+        quantity: "",
     })
 
+    const getData = async () => {
+        try {
+            const [productData, orderData] = await Promise.all([
+                getMethod("/products"),
+                getMethod("/orders")
+            ])
 
-    const getOrders = async () => {
-        const [productData,orderData] = await Promise.all([
-            getMethod("/products"),
-            getMethod("/orders")
-        ])
-        if(productData){
-            setProducts(productData)
-        }
-        // @ts-ignore
-        if (orderData && productData) {
-            const data = orderData.map((od: Order) => {
-                const product = products.find(prod => prod.id === od.product_id) 
-                               
-                const quantity = Number(od.quantity)
-                let amount
-                if (product) {
-                    amount = quantity * product.price
-                }
-                else {
-                    amount = +od.amount
-                }
+            if (orderData && productData) {
+                setProducts(productData)
 
-                return {
-                    id: od.id,
-                    date: od.date,
-                    product_id: Number(od.product_id),
-                    quantity,
-                    amount
-                }
+                const formatted = orderData.map((o: any): Order => {
+                    const product = productData.find((p: Product) => Number(p.id) === Number(o.product_id))
+                    const quantity = Number(o.quantity)
+                    const amount = product ? quantity * product.price : Number(o.amount)
 
-            })
-            setOrders(data)
+                    return {
+                        id: Number(o.id),
+                        date: o.date,
+                        product_id: Number(o.product_id),
+                        quantity,
+                        amount
+                    }
+                })
+
+                setOrders(formatted)
+            }
+        } catch (error) {
+            console.log("Loi du lieu:", error)
         }
     }
 
+    const onSave = async () => {
+        const { date, product, quantity } = newOrder
+        if (!date || !product || !quantity) {
+            alert("Nhap du thong tin di!")
+            return
+        }
 
-    useEffect(()=>{
-        getOrders()
-    },[])
+        const maxId = Math.max(0, ...orders.map(o => Number(o.id) || 0))
+        const id = String(maxId + 1)
+        const amount = Number(quantity) * product.price
+
+        const data = await postMethod("/orders", {
+            id,
+            date,
+            product_id: product.id,
+            quantity: Number(quantity),
+            amount
+        })
+
+        if (data) {
+            setOrders((prev) => [...prev, {
+                ...data,
+                amount
+            }])
+            setOpen(false)
+            setNewOrder({ date: "", product: null, quantity: "" })
+        }
+    }
+
+    const onDelete = useCallback(async (id: number | string) => {
+        const ok = await deleteMethod(`/orders/${id}`);
+        if (ok) {
+            setOrders(prev => prev.filter(o => o.id !== id));
+        }
+    }, []);
+
+    useEffect(() => {
+        getData()
+    }, [])
+
+    const filteredOrders = useMemo(() => {
+        return orders.filter(order => {
+            const product = products.find(p => Number(p.id) === Number(order.product_id));
+            return product?.name.toLowerCase().includes(searchText.toLowerCase());
+        });
+    }, [orders, products, searchText]);
 
     return (
         <>
-            {/* 
-            <TableContainer>
-                <Typography>
-                    Danh sach don hang
-                </Typography>
-
-                <Button variant="contained" onClick={() => setOpen(true)} >Them</Button>
-
-
+            <TableContainer sx={{ mt: 4, p: 2 }}>
+                <TextField
+                    label="Tim theo ten san pham"
+                    variant="outlined"
+                    fullWidth
+                    sx={{ mb: 2 }}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                />
+                <Typography variant="h5" gutterBottom>Danh Sach Don Hang</Typography>
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setOpen(true)}
+                    sx={{ mb: 2 }}
+                >
+                    Thêm
+                </Button>
                 <Table>
                     <TableHead>
                         <TableRow>
-                            {
-                                headers.map((header) => (
-                                    <TableCell key={header.name}>{header.text}</TableCell>
-                                ))
-                            }
+                            {headers.map(h => (
+                                <TableCell key={h.name}>{h.text}</TableCell>
+                            ))}
                         </TableRow>
                     </TableHead>
-
                     <TableBody>
-                        {
-                            products.map((product: any) =>
-                                // @ts-ignore
-                                <TableRow key={product.id}>
-                                    <TableCell>{product.id}</TableCell>
-                                    <TableCell>{product.name}</TableCell>
-                                    <TableCell>{product.price}</TableCell>
-                                    <TableCell>{product.remaining}</TableCell>
+                        {filteredOrders.map(order => {
+                            const product = products.find(p => Number(p.id) === Number(order.product_id))
+                            const productName = product ? product.name : "Khong xac dinh"
+
+                            return (
+                                <TableRow key={order.id}>
+                                    <TableCell>{String(order.id)}</TableCell>
+                                    <TableCell>{productName}</TableCell>
+                                    <TableCell>{order.quantity}</TableCell>
+                                    <TableCell>{order.amount}</TableCell>
                                     <TableCell>
-                                        <DeleteIcon color="error" onClick={() => onDelete(product.id)} ></DeleteIcon>
+                                        <IconButton color="error" onClick={() => onDelete(order.id)}>
+                                            <DeleteIcon />
+                                        </IconButton>
                                     </TableCell>
                                 </TableRow>
                             )
-                        }
-
+                        })}
                     </TableBody>
-
                 </Table>
-
             </TableContainer>
 
-            <Dialog
-                open={open}
-                onClose={() => setOpen(false)}
-            >
-                <DialogTitle>Them San Pham Moi</DialogTitle>
-                <DialogContent>
+            <Dialog open={open} onClose={() => setOpen(false)} fullWidth>
+                <DialogTitle>Them Don Hang</DialogTitle>
+                <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
                     <TextField
-                        required
-                        label="Ten San Pham"
-                        type="text"
-                        fullWidth
-                        value={newProduct.name}
-                        variant="standard"
-                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        type="date"
+                        value={newOrder.date}
+                        onChange={(e) => setNewOrder({ ...newOrder, date: e.target.value })}
                     />
 
-                    <TextField
-                        required
-                        label="Gia"
-                        type="number"
-                        fullWidth
-                        value={newProduct.price}
-                        variant="standard"
-                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                    <Autocomplete
+                        options={products}
+                        getOptionLabel={(option) => `${option.name} (${option.price.toLocaleString()}đ)`}
+                        value={newOrder.product}
+                        onChange={(e, value) => setNewOrder({ ...newOrder, product: value })}
+                        renderInput={(params) => <TextField {...params} label="San Pham" />}
                     />
-
                     <TextField
-                        required
-                        label="Ton Kho"
+                        label="So Luong"
                         type="number"
-                        fullWidth
-                        value={newProduct.remaining}
-                        variant="standard"
-                        onChange={(e) => setNewProduct({ ...newProduct, remaining: e.target.value })}
+                        value={newOrder.quantity}
+                        onChange={(e) => setNewOrder({ ...newOrder, quantity: e.target.value })}
                     />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Huy</Button>
-                    <Button variant="contained" onClick={onAdd} >Luu</Button>
+                    <Button variant="contained" onClick={onSave}>Luu</Button>
                 </DialogActions>
-            </Dialog> */}
-
+            </Dialog>
         </>
-
-
-
-
     )
 }
+
+export default OrderList

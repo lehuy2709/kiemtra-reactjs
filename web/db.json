@@ -1,25 +1,32 @@
 {
   "products": [
     {
-      "id": "2",
-      "name": "chuoi ",
-      "price": 432922,
-      "remaining": 68886
+      "id": "6",
+      "name": "Cay to 7 mon",
+      "price": 12000,
+      "remaining": 5
     },
     {
-      "id": "4",
-      "name": "sdasd",
-      "price": 242,
-      "remaining": 2412515
+      "id": "7",
+      "name": "vitamin gau gau",
+      "price": 12333,
+      "remaining": 5
     }
   ],
   "orders": [
     {
       "id": "1",
-      "date": "2025-05-25",
-      "product_id": "2",
-      "quantity": 2,
-      "amount": 16000
+      "date": "2025-05-02",
+      "product_id": "6",
+      "quantity": 10,
+      "amount": 120000
+    },
+    {
+      "id": "2",
+      "date": "2025-05-23",
+      "product_id": "6",
+      "quantity": 99999,
+      "amount": 1199988000
     }
   ]
 }
